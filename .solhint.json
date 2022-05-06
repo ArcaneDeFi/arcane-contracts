@@ -1,6 +1,6 @@
 {
   "rules": {
-    "compiler-version": ["error", "^0.8.11"],
+    "compiler-version": ["error", "^0.8.9"],
     "func-visibility": ["error", { "ignoreConstructors": true }],
     "no-unused-vars": "error",
     "const-name-snakecase": "error",

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.13;
+pragma solidity 0.8.9;
 
 /// @title IPool
 /// @notice There is an interface for Pool Smart Contract that provides the sale of tokens
