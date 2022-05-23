@@ -1,13 +1,13 @@
-// SPDX-License-Identifier: Unlicensed
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 pragma abicoder v2;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../node_modules/@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "../node_modules/@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../node_modules/@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "./interfaces/IUniswapV2Factory.sol";
 import "./interfaces/IUniswapV2Router02.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 
 /**
     @title contract special for distribution tokens
@@ -21,20 +21,20 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
         uint256 _taxFee;
     }
 
-    uint256 private constant MAX = type(uint256).max;
-    uint256 private constant _tTotal = 600 * 10**6 * 10**18; // 600m
+    uint256 private constant _MAX = type(uint256).max;
+    uint256 private constant _T_TOTAL = 600 * 10**6 * 10**18; // 600m
 
     IUniswapV2Router02 public uniswapV2Router;
     address public uniswapV2Pair;
 
-    uint256 public _maxTxAmount; 
+    uint256 public maxTxAmount; 
 
     FeeValues public swapFee;
     FeeValues public transferFee;
 
     bool public swapAndLiquifyEnabled;
     uint8 private _decimals;
-    uint256 private numTokensSellToAddToLiquidity;
+    uint256 private _numTokensSellToAddToLiquidity;
 
     FeeValues private _previousSwapFee;
     FeeValues private _previousTransferFee;
@@ -46,7 +46,7 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
     uint256 private _lockTime;
 
     address[] private _excluded;
-    bool inSwapAndLiquify;
+    bool private _inSwapAndLiquify;
 
     mapping(address => uint256) private _rOwned;
     mapping(address => uint256) private _tOwned;
@@ -127,9 +127,9 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
     );
 
     modifier lockTheSwap() {
-        inSwapAndLiquify = true;
+        _inSwapAndLiquify = true;
         _;
-        inSwapAndLiquify = false;
+        _inSwapAndLiquify = false;
     }
 
     modifier checkZeroAddress(address account) {
@@ -159,14 +159,14 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
         checkZeroAddress(_owner)
     {
         _decimals = 18;
-        _maxTxAmount = _tTotal; // 600m
-        numTokensSellToAddToLiquidity = 5 * 10**5 * 10**18; // 500k
+        maxTxAmount = _T_TOTAL; // 600m
+        _numTokensSellToAddToLiquidity = 5 * 10**5 * 10**18; // 500k
         swapFee._liquidityFee = 5;
         transferFee._liquidityFee = 2;
         swapAndLiquifyEnabled = true;
         _previousSwapFee._liquidityFee = swapFee._liquidityFee;
         _previousTransferFee._liquidityFee = transferFee._liquidityFee;
-        _rTotal = (MAX - (MAX % _tTotal));
+        _rTotal = (_MAX - (_MAX % _T_TOTAL));
         _rOwned[_owner] = _rTotal;
         __ERC20_init("EG", "EG");
         __Ownable_init();
@@ -177,7 +177,7 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
         _isExcludedFromFee[_owner] = true;
         _isExcludedFromFee[address(this)] = true;
         _transferOwnership(_owner);
-        emit Transfer(address(0), _owner, _tTotal);
+        emit Transfer(address(0), _owner, _T_TOTAL);
     }
 
     /**
@@ -186,8 +186,8 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
         @param threshold - value of threshold
     */
     function setThreshold(uint256 threshold) external onlyOwner {
-        numTokensSellToAddToLiquidity = threshold;
-        emit Threshold(numTokensSellToAddToLiquidity);
+        _numTokensSellToAddToLiquidity = threshold;
+        emit Threshold(_numTokensSellToAddToLiquidity);
     }
 
     /**
@@ -252,8 +252,8 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
     */
     function setMaxTxPercent(uint256 maxTxPercent) external onlyOwner {
         require(maxTxPercent <= 100, "maxTxPercent can't exceeds 100%");
-        _maxTxAmount = _tTotal.mul(maxTxPercent).div(10**2);
-        emit MaxTxPercent(_maxTxAmount);
+        maxTxAmount = _T_TOTAL.mul(maxTxPercent).div(10**2);
+        emit MaxTxPercent(maxTxAmount);
     }
 
     /**
@@ -359,31 +359,14 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
     }
 
     /**
-        @notice return info about exclude account from fee
-        @param account - address of account
-        @return bool value of _isExcludedFromFee
-    */
-    function isExcludedFromFee(address account) external view returns (bool) {
-        return _isExcludedFromFee[account];
-    }
-
-    /**
         @notice set enable for swap and liquify
         @dev set value of swapAndLiquifyEnabled
-        @param _enabled - set whether swapAndLiquify function is enables.
+        @param _enabled - set whether _swapAndLiquify function is enables.
         true - if enable, false - if disable
     */
     function setSwapAndLiquifyEnabled(bool _enabled) external onlyOwner {
         swapAndLiquifyEnabled = _enabled;
         emit SwapAndLiquifyEnabledUpdated(_enabled);
-    }
-
-    /**
-        @notice return setted lock time
-        @return value of variable _lockTime
-    */
-    function getUnlockTime() external view returns (uint256) {
-        return _lockTime;
     }
 
     /**
@@ -408,6 +391,23 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
         );
         require(block.timestamp > _lockTime, "Contract is locked");
         _transferOwnership(_previousOwner);
+    }
+
+    /**
+        @notice return info about exclude account from fee
+        @param account - address of account
+        @return bool value of _isExcludedFromFee
+    */
+    function isExcludedFromFee(address account) external view returns (bool) {
+        return _isExcludedFromFee[account];
+    }
+
+    /**
+        @notice return setted lock time
+        @return value of variable _lockTime
+    */
+    function getUnlockTime() external view returns (uint256) {
+        return _lockTime;
     }
 
     /**
@@ -444,7 +444,7 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
         view
         returns (uint256)
     {
-        require(tAmount <= _tTotal, "Amount must be less than supply");
+        require(tAmount <= _T_TOTAL, "Amount must be less than supply");
         if (!deductTransferFee) {
             (uint256 rAmount, , , , , ) = _getValues(tAmount, transferFee);
             return rAmount;
@@ -466,14 +466,6 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
     function balanceOf(address account) public view override returns (uint256) {
         if (_isExcluded[account]) return _tOwned[account];
         return tokenFromReflection(_rOwned[account]);
-    }
-
-    /**
-        @notice return value of total supply
-        @return value of variable _tTotal
-    */
-    function totalSupply() public pure override returns (uint256) {
-        return _tTotal;
     }
 
     /**
@@ -504,6 +496,14 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
     }
 
     /**
+        @notice return value of total supply
+        @return value of variable _T_TOTAL
+    */
+    function totalSupply() public pure override returns (uint256) {
+        return _T_TOTAL;
+    }
+
+    /**
         @notice transfer amount, add liquidity
         @dev check amount and accounts, transfer will take fee, add liquidity
         @param from - address of account that transfer amount
@@ -520,24 +520,24 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
         require(amount > 0, "Transfer amount must be greater than zero");
         if (from != owner() && to != owner())
             require(
-                amount <= _maxTxAmount,
+                amount <= maxTxAmount,
                 "Transfer amount exceeds the maxTxAmount."
             );
 
         uint256 contractTokenBalance = balanceOf(address(this));
-        if (contractTokenBalance >= _maxTxAmount) {
-            contractTokenBalance = _maxTxAmount;
+        if (contractTokenBalance >= maxTxAmount) {
+            contractTokenBalance = maxTxAmount;
         }
         bool overMinTokenBalance = contractTokenBalance >=
-            numTokensSellToAddToLiquidity;
+            _numTokensSellToAddToLiquidity;
         if (
             overMinTokenBalance &&
-            !inSwapAndLiquify &&
+            !_inSwapAndLiquify &&
             from != uniswapV2Pair &&
             swapAndLiquifyEnabled
         ) {
-            contractTokenBalance = numTokensSellToAddToLiquidity;
-            swapAndLiquify(contractTokenBalance);
+            contractTokenBalance = _numTokensSellToAddToLiquidity;
+            _swapAndLiquify(contractTokenBalance);
         }
         bool takeFee = true;
         if (_isExcludedFromFee[from] || _isExcludedFromFee[to]) {
@@ -559,135 +559,6 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
     }
 
     /**
-        @notice return tValues and rValues
-        @dev return values depending on tAmount
-        @param tAmount - value for calculate return values
-        @return rAmount - value as result of calculating tAmount and rate
-        @return rTransferAmount - value as result of calculating rAmount, rFee and rLiquidity
-        @return rFee - value as result of calculating tFee and rate
-        @return tTransferAmount - value as result of calculating tAmount, tFee and tLiquidity
-        @return tFee - value as result of calculating _taxFee and tAmount
-        @return tLiquidity - value as result of calculating _liquidityFee and tAmount
-    */
-    function _getValues(uint256 tAmount, FeeValues memory fees)
-        private
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        (
-            uint256 tTransferAmount,
-            uint256 tFee,
-            uint256 tLiquidity
-        ) = _getTValues(tAmount, fees);
-        (uint256 rAmount, uint256 rTransferAmount, uint256 rFee) = _getRValues(
-            tAmount,
-            tFee,
-            tLiquidity,
-            _getRate()
-        );
-        return (
-            rAmount,
-            rTransferAmount,
-            rFee,
-            tTransferAmount,
-            tFee,
-            tLiquidity
-        );
-    }
-
-    /**
-        @notice return tValues
-        @dev return values depending on tAmount
-        @param tAmount - value for calculate return values
-        @return tTransferAmount - value as result of calculating tAmount, tFee and tLiquidity
-        @return tFee - value as result of calculating _taxFee and tAmount
-        @return tLiquidity - value as result of calculating _liquidityFee and tAmount
-    */
-    function _getTValues(uint256 tAmount, FeeValues memory fees)
-        private
-        pure
-        returns (
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        uint256 tFee = _calculateFee(tAmount, fees._taxFee);
-        uint256 tLiquidity = _calculateFee(tAmount, fees._liquidityFee);
-        uint256 tTransferAmount = tAmount.sub(tFee).sub(tLiquidity);
-        return (tTransferAmount, tFee, tLiquidity);
-    }
-
-    /**
-        @notice return rValues
-        @dev return values depending on values of parameters
-        @param tAmount - value of transfer amount to calculate rAmount
-        @param tFee - value of taxFee to calculate rFee
-        @param tLiquidity - value liquidityFee to calculate rLiquidity
-        @param currentRate - value of currentRate to calculate return's values
-        @return rAmount - value as result of calculating tAmount and currentRate
-        @return rTransferAmount - value as result of calculating rAmount, rFee and rLiquidity
-        @return rFee - value as result of calculating tFee and currentRate
-    */
-    function _getRValues(
-        uint256 tAmount,
-        uint256 tFee,
-        uint256 tLiquidity,
-        uint256 currentRate
-    )
-        private
-        pure
-        returns (
-            uint256,
-            uint256,
-            uint256
-        )
-    {
-        uint256 rAmount = tAmount.mul(currentRate);
-        uint256 rFee = tFee.mul(currentRate);
-        uint256 rLiquidity = tLiquidity.mul(currentRate);
-        uint256 rTransferAmount = rAmount.sub(rFee).sub(rLiquidity);
-        return (rAmount, rTransferAmount, rFee);
-    }
-
-    /**
-        @notice return rate
-        @dev return values depending on r and t values
-        @return value as result of calculating rSupply and tSupply
-    */
-    function _getRate() private view returns (uint256) {
-        (uint256 rSupply, uint256 tSupply) = _getCurrentSupply();
-        return rSupply.div(tSupply);
-    }
-
-    /**
-        @notice return current supply
-        @dev return values depending on r and t values
-        @return r and t values depending on condition
-    */
-    function _getCurrentSupply() private view returns (uint256, uint256) {
-        uint256 rSupply = _rTotal;
-        uint256 tSupply = _tTotal;
-        for (uint256 i = 0; i < _excluded.length; i++) {
-            if (
-                _rOwned[_excluded[i]] > rSupply ||
-                _tOwned[_excluded[i]] > tSupply
-            ) return (_rTotal, _tTotal);
-            rSupply = rSupply.sub(_rOwned[_excluded[i]]);
-            tSupply = tSupply.sub(_tOwned[_excluded[i]]);
-        }
-        if (rSupply < _rTotal.div(_tTotal)) return (_rTotal, _tTotal);
-        return (rSupply, tSupply);
-    }
-
-    /**
         @notice should take liquidity
         @dev change values of _rOwned and _tOwned depending on tLiquidity
         @param tLiquidity - value for correct change values of variables
@@ -705,7 +576,7 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
         @notice remove all fee
         @dev change values of variables relationed swap and transfer fee
     */
-    function removeAllFee() private {
+    function _removeAllFee() private {
         FeeValues memory empty = FeeValues(0, 0);
 
         _previousSwapFee = swapFee;
@@ -726,7 +597,7 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
         @notice restore all fee
         @dev change values of variables relationed swap and transfer fee
     */
-    function restoreAllFee() private {
+    function _restoreAllFee() private {
         swapFee = _previousSwapFee;
         transferFee = _previousTransferFee;
         emit RestoreAllFee(swapFee, transferFee);
@@ -737,13 +608,13 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
         @dev split the balance, exchange tokens for BNB and add liquidity
         @param contractTokenBalance - contract's balance
     */
-    function swapAndLiquify(uint256 contractTokenBalance) private lockTheSwap {
+    function _swapAndLiquify(uint256 contractTokenBalance) private lockTheSwap {
         uint256 half = contractTokenBalance.div(2);
         uint256 otherHalf = contractTokenBalance.sub(half);
         uint256 initialBalance = address(this).balance;
-        swapTokensForMATIC(half);
+        _swapTokensForMATIC(half);
         uint256 newBalance = address(this).balance.sub(initialBalance);
-        addLiquidity(otherHalf, newBalance);
+        _addLiquidity(otherHalf, newBalance);
         emit SwapAndLiquify(half, newBalance, otherHalf);
     }
 
@@ -752,7 +623,7 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
         @dev add approve, generate uniswap pair and swap
         @param tokenAmount - amount of tokens for swap
     */
-    function swapTokensForMATIC(uint256 tokenAmount) private {
+    function _swapTokensForMATIC(uint256 tokenAmount) private {
         address[] memory path = new address[](2);
         path[0] = address(this);
         path[1] = uniswapV2Router.WETH();
@@ -772,7 +643,7 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
         @param tokenAmount - amount of tokens for approve and liquidity
         @param maticAmount - amount of BNB for call functions for add liquidity
     */
-    function addLiquidity(uint256 tokenAmount, uint256 maticAmount) private {
+    function _addLiquidity(uint256 tokenAmount, uint256 maticAmount) private {
         _approve(address(this), address(uniswapV2Router), tokenAmount);
         (
             uint256 amountToken,
@@ -803,7 +674,7 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
         uint256 amount,
         bool takeFee
     ) private {
-        if (!takeFee) removeAllFee();
+        if (!takeFee) _removeAllFee();
         if (_isExcluded[sender] && !_isExcluded[recipient]) {
             _transferFromExcluded(sender, recipient, amount);
         } else if (!_isExcluded[sender] && _isExcluded[recipient]) {
@@ -813,7 +684,7 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
         } else {
             _transferStandard(sender, recipient, amount);
         }
-        if (!takeFee) restoreAllFee();
+        if (!takeFee) _restoreAllFee();
     }
 
     /**
@@ -971,17 +842,77 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
     }
 
     /**
-        @notice calculate amount of fee
-        @param _amount - amount to take fee from
-        @param _fee - percents of fee 
-        @return return value of fee
+        @notice return tValues and rValues
+        @dev return values depending on tAmount
+        @param tAmount - value for calculate return values
+        @return rAmount - value as result of calculating tAmount and rate
+        @return rTransferAmount - value as result of calculating rAmount, rFee and rLiquidity
+        @return rFee - value as result of calculating tFee and rate
+        @return tTransferAmount - value as result of calculating tAmount, tFee and tLiquidity
+        @return tFee - value as result of calculating _taxFee and tAmount
+        @return tLiquidity - value as result of calculating _liquidityFee and tAmount
     */
-    function _calculateFee(uint256 _amount, uint256 _fee)
+    function _getValues(uint256 tAmount, FeeValues memory fees)
         private
-        pure
-        returns (uint256)
+        view
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
     {
-        return _amount.mul(_fee).div(10**2);
+        (
+            uint256 tTransferAmount,
+            uint256 tFee,
+            uint256 tLiquidity
+        ) = _getTValues(tAmount, fees);
+        (uint256 rAmount, uint256 rTransferAmount, uint256 rFee) = _getRValues(
+            tAmount,
+            tFee,
+            tLiquidity,
+            _getRate()
+        );
+        return (
+            rAmount,
+            rTransferAmount,
+            rFee,
+            tTransferAmount,
+            tFee,
+            tLiquidity
+        );
+    }
+
+    /**
+        @notice return rate
+        @dev return values depending on r and t values
+        @return value as result of calculating rSupply and tSupply
+    */
+    function _getRate() private view returns (uint256) {
+        (uint256 rSupply, uint256 tSupply) = _getCurrentSupply();
+        return rSupply.div(tSupply);
+    }
+
+    /**
+        @notice return current supply
+        @dev return values depending on r and t values
+        @return r and t values depending on condition
+    */
+    function _getCurrentSupply() private view returns (uint256, uint256) {
+        uint256 rSupply = _rTotal;
+        uint256 tSupply = _T_TOTAL;
+        for (uint256 i = 0; i < _excluded.length; i++) {
+            if (
+                _rOwned[_excluded[i]] > rSupply ||
+                _tOwned[_excluded[i]] > tSupply
+            ) return (_rTotal, _T_TOTAL);
+            rSupply = rSupply.sub(_rOwned[_excluded[i]]);
+            tSupply = tSupply.sub(_tOwned[_excluded[i]]);
+        }
+        if (rSupply < _rTotal.div(_T_TOTAL)) return (_rTotal, _T_TOTAL);
+        return (rSupply, tSupply);
     }
 
     function _getFeeAmountBasedOnTransferType(address sender, address recipient)
@@ -999,5 +930,74 @@ contract ArcaneToken is ERC20Upgradeable, OwnableUpgradeable {
             // simple transfer action
             return transferFee;
         }
+    }
+
+    /**
+        @notice calculate amount of fee
+        @param _amount - amount to take fee from
+        @param _fee - percents of fee 
+        @return return value of fee
+    */
+    function _calculateFee(uint256 _amount, uint256 _fee)
+        private
+        pure
+        returns (uint256)
+    {
+        return _amount.mul(_fee).div(10**2);
+    }
+
+    /**
+        @notice return tValues
+        @dev return values depending on tAmount
+        @param tAmount - value for calculate return values
+        @return tTransferAmount - value as result of calculating tAmount, tFee and tLiquidity
+        @return tFee - value as result of calculating _taxFee and tAmount
+        @return tLiquidity - value as result of calculating _liquidityFee and tAmount
+    */
+    function _getTValues(uint256 tAmount, FeeValues memory fees)
+        private
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        uint256 tFee = _calculateFee(tAmount, fees._taxFee);
+        uint256 tLiquidity = _calculateFee(tAmount, fees._liquidityFee);
+        uint256 tTransferAmount = tAmount.sub(tFee).sub(tLiquidity);
+        return (tTransferAmount, tFee, tLiquidity);
+    }
+
+    /**
+        @notice return rValues
+        @dev return values depending on values of parameters
+        @param tAmount - value of transfer amount to calculate rAmount
+        @param tFee - value of taxFee to calculate rFee
+        @param tLiquidity - value liquidityFee to calculate rLiquidity
+        @param currentRate - value of currentRate to calculate return's values
+        @return rAmount - value as result of calculating tAmount and currentRate
+        @return rTransferAmount - value as result of calculating rAmount, rFee and rLiquidity
+        @return rFee - value as result of calculating tFee and currentRate
+    */
+    function _getRValues(
+        uint256 tAmount,
+        uint256 tFee,
+        uint256 tLiquidity,
+        uint256 currentRate
+    )
+        private
+        pure
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
+        uint256 rAmount = tAmount.mul(currentRate);
+        uint256 rFee = tFee.mul(currentRate);
+        uint256 rLiquidity = tLiquidity.mul(currentRate);
+        uint256 rTransferAmount = rAmount.sub(rFee).sub(rLiquidity);
+        return (rAmount, rTransferAmount, rFee);
     }
 }

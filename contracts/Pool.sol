@@ -2,11 +2,11 @@
 pragma solidity 0.8.9;
 
 import "./interfaces/IPool.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
+import "../node_modules/@openzeppelin/contracts/access/Ownable.sol";
+import "../node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "../node_modules/@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @title Pool
 /// @notice This Smart Contract provides the sale of tokens that will be unlocking until a certain date
