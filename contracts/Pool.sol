@@ -9,27 +9,25 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @title Pool
+/// @author Arcane
 /// @notice This Smart Contract provides the sale of tokens that will be unlocking until a certain date
-/// @dev This Smart Contract provides the sale of tokens that will be unlocking until a certain date
+/// @dev Only creator should deploy this Smart Contract, this is upgradeable Smart Contract
 contract Pool is IPool, Ownable {
     using SafeERC20 for IERC20;
     using Math for uint256;
 
     /// @notice Store amounts of deposits that were paid from recipients
-    /// @dev Store amounts of deposits that were paid from recipients
     /// @return Deposit amount that was paid from recipient
     mapping(address => uint256) public override deposited;
-    
-    /// @notice Store amounts of specific deposit allocations that were allowed for some recipients
-    /// @dev Store amounts of specific deposit allocations that were allowed for some recipients
-    /// @return Amount of specific allocation for recipient
+
+    /// @notice Store amounts of reward tokens that were paid to recipients
+    /// @return Reward amount that was paid to recipient
     mapping(address => uint256) public override rewardsPaid;
 
     /// @notice Store amounts of specific deposit allocations that were allowed for some recipients
-    /// @dev Store amounts of specific deposit allocations that were allowed for some recipients
     /// @return Amount of specific allocation for recipient
     mapping(address => uint256) public override specificAllocation;
-    
+
     /// @notice Store specific vesting data for some recipients
     /// @dev Store specific vesting data for some recipients
     /// return The value of the structure variable VestingInfo (period duration,
@@ -40,14 +38,13 @@ contract Pool is IPool, Ownable {
     /// @dev Store number of reward token decimals
     /// @return Number of reward token decimals
     uint8 public rewardTokenDecimals;
-    
+
     /// @notice Store decimals of staked token
     /// @dev Store number of staked token decimals
     /// @return Number of staked token decimals
     uint8 public stakedTokenDecimals;
-    
+
     /// @notice Store bool whether the vesting is completed
-    /// @dev Store bool whether the vesting is completed
     /// @return Bool whether the vesting is completed
     bool public isCompleted;
 
@@ -64,11 +61,9 @@ contract Pool is IPool, Ownable {
     uint256 internal _initialPercentage;
 
     /// @notice Store general allowed minimum allocation to deposit
-    /// @dev Store general allowed minimum allocation to deposit
     uint256 internal _minAllocation;
 
     /// @notice Store general allowed maximum allocation to deposit
-    /// @dev Store general allowed maximum allocation to deposit
     uint256 internal _maxAllocation;
 
     /// @notice Store type of vesting
@@ -106,9 +101,9 @@ contract Pool is IPool, Ownable {
     /// @notice Store constant of percentage 100
     /// @dev Store value of 100 ethers
     uint256 internal constant _MAX_INITIAL_PERCENTAGE = 1e20;
-    
-    /// @notice Initialization
-    /// @dev Initialize contract, grand roles for the deployer
+
+    /// @notice Deployment
+    /// @dev Initialize contract
     /// @param name_ The name of vesting
     /// @param rewardToken_ The address of reward token
     /// @param depositToken_ The address of deposit token
@@ -129,10 +124,7 @@ contract Pool is IPool, Ownable {
             rewardToken_ != address(0) && depositToken_ != address(0),
             "Incorrect token address"
         );
-        require(
-            minAllocation_ <= maxAllocation_ && maxAllocation_ != 0,
-            "Incorrect allocation"
-        );
+        require(minAllocation_ <= maxAllocation_, "Incorrect allocation");
         require(
             initialUnlockPercentage_ <= _MAX_INITIAL_PERCENTAGE,
             "Incorrect initial percentage"
@@ -215,10 +207,14 @@ contract Pool is IPool, Ownable {
     ) external virtual override onlyOwner {
         require(addrs_.length == amount_.length, "Different array size");
 
-        for (uint256 index = 0; index < addrs_.length; index++) {
+        uint256 index = 0;
+        for (index; index < addrs_.length; index++) {
             specificAllocation[addrs_[index]] = amount_[index];
         }
-        emit SetSpecificAllocation(addrs_, amount_);
+        if (index != addrs_.length) {
+            index++;
+        }
+        emit SetSpecificAllocation(addrs_[:index], amount_[:index]);
     }
 
     /// @notice Initialize general vesting
@@ -300,7 +296,6 @@ contract Pool is IPool, Ownable {
     }
 
     /// @notice Complete the vesting and transfer all funds and unsold rewards to vesting owner
-    /// @dev Complete the vesting and transfer all funds and unsold rewards to vesting owner
     function completeVesting() external virtual override onlyOwner {
         require(_isVestingStarted(), "Vesting cannot be started");
         require(!isCompleted, "Completing was called before");
@@ -348,9 +343,9 @@ contract Pool is IPool, Ownable {
 
     /// @notice Harvest rewards for the recipient
     /// @dev Harvest rewards to specified recipient address
-    /// @param _addr The address of recipient
-    function harvestFor(address _addr) external virtual override {
-        _harvest(_addr, 0);
+    /// @param addr_ The address of recipient
+    function harvestFor(address addr_) external virtual override {
+        _harvest(addr_, 0);
     }
 
     /// @notice Harvest rewards for sender
@@ -361,15 +356,15 @@ contract Pool is IPool, Ownable {
 
     /// @notice Harvest rewards for the sender with interval index
     /// @dev Harvest rewards to the sender address with interval index
-    /// @param intervalIndex The index of interval that is already unlocked
-    function harvestInterval(uint256 intervalIndex) external virtual override {
-        _harvest(_msgSender(), intervalIndex);
+    /// @param intervalIndex_ The index of interval that is already unlocked
+    function harvestInterval(uint256 intervalIndex_) external virtual override {
+        _harvest(_msgSender(), intervalIndex_);
     }
 
     /// @notice Get an available deposit range
     /// @dev Get available amounts to deposit for addresses with general and specific allocations
     /// @param addr_ The address of recipient
-    /// @return minAvailAllocation Allowed minimum allocation to deposit
+    /// @return minAvailAllocation Allowed minimum allocation to deposit 
     /// @return maxAvailAllocation Allowed maximum allocation to deposit
     function getAvailAmountToDeposit(address addr_)
         external
@@ -450,10 +445,7 @@ contract Pool is IPool, Ownable {
         view
         virtual
         override
-        returns (
-            uint256 startDate,
-            uint256 endDate
-        )
+        returns (uint256 startDate, uint256 endDate)
     {
         return (_startDate, _endDate);
     }
@@ -537,13 +529,13 @@ contract Pool is IPool, Ownable {
 
     /// @notice Initialize vesting data
     /// @dev Set vesting parameters for recipients
-    /// @param info Default vesting values
+    /// @param info_ Default vesting values
     /// @param periodDuration_ Each period's duration for linear vesting
     /// @param countPeriodOfVesting_ Number of periods for linear vesting
     /// @param cliffDuration_ Period duration after sale during which no rewards are given for linear vesting
     /// @param _intervals An array of structures that stores both the date and amount of unlocking for interval vesting
     function _setVesting(
-        VestingInfo storage info,
+        VestingInfo storage info_,
         uint256 periodDuration_,
         uint256 countPeriodOfVesting_,
         uint256 cliffDuration_,
@@ -554,11 +546,11 @@ contract Pool is IPool, Ownable {
                 countPeriodOfVesting_ > 0 && periodDuration_ > 0,
                 "Incorrect linear vesting setup"
             );
-            info.periodDuration = periodDuration_;
-            info.countPeriodOfVesting = countPeriodOfVesting_;
-            info.cliffDuration = cliffDuration_;
+            info_.periodDuration = periodDuration_;
+            info_.countPeriodOfVesting = countPeriodOfVesting_;
+            info_.cliffDuration = cliffDuration_;
         } else {
-            delete info.unlockIntervals;
+            delete info_.unlockIntervals;
             uint256 lastUnlockingPart = _initialPercentage;
             uint256 lastIntervalStartingTimestamp = _endDate;
             for (uint256 i = 0; i < _intervals.length; i++) {
@@ -573,7 +565,7 @@ contract Pool is IPool, Ownable {
                     "Invalid interval starting timestamp"
                 );
                 lastUnlockingPart = percent;
-                info.unlockIntervals.push(_intervals[i]);
+                info_.unlockIntervals.push(_intervals[i]);
             }
             require(
                 lastUnlockingPart == _MAX_INITIAL_PERCENTAGE,
@@ -584,20 +576,20 @@ contract Pool is IPool, Ownable {
 
     /// @notice Harvest rewards for the recipient with interval index
     /// @dev Harvest rewards to the recipient address with interval index
-    /// @param _addr The address of recipient
-    /// @param intervalIndex The index of interval that is already unlocked
-    function _harvest(address _addr, uint256 intervalIndex) internal virtual {
+    /// @param addr_ The address of recipient
+    /// @param intervalIndex_ The index of interval that is already unlocked
+    function _harvest(address addr_, uint256 intervalIndex_) internal virtual {
         require(_isVestingStarted(), "Vesting can't be started");
 
-        uint256 amountToTransfer = _calculateUnlock(_addr, intervalIndex);
+        uint256 amountToTransfer = _calculateUnlock(addr_, intervalIndex_);
 
         require(amountToTransfer > 0, "Amount is zero");
 
-        rewardsPaid[_addr] += amountToTransfer;
+        rewardsPaid[addr_] += amountToTransfer;
 
-        _rewardToken.safeTransfer(_addr, amountToTransfer);
+        _rewardToken.safeTransfer(addr_, amountToTransfer);
 
-        emit Harvest(_addr, amountToTransfer);
+        emit Harvest(addr_, amountToTransfer);
     }
 
     /// @notice Compute unlocking amount of reward tokens to recipient
@@ -630,61 +622,59 @@ contract Pool is IPool, Ownable {
         }
         return tokenAmount > oldRewards ? tokenAmount - oldRewards : 0;
     }
-    
+
     /// @notice Compute unlocking amount of reward tokens to recipient for linear vesting
-    /// @dev Compute unlocking amount of reward tokens to recipient for linear vesting
-    /// @param info Vesting data (general or specific)
-    /// @param tokenAmount Available reward token amount
+    /// @param info_ Vesting data (general or specific)
+    /// @param tokenAmount_ Available reward token amount
     /// @return Unlocked amount of reward tokens
     function _calculateLinearUnlock(
-        VestingInfo memory info,
-        uint256 tokenAmount
+        VestingInfo memory info_,
+        uint256 tokenAmount_
     ) internal view virtual returns (uint256) {
-        if (block.timestamp > _endDate + info.cliffDuration) {
-            uint256 initialUnlockAmount = (tokenAmount * _initialPercentage) /
+        if (block.timestamp > _endDate + info_.cliffDuration) {
+            uint256 initialUnlockAmount = (tokenAmount_ * _initialPercentage) /
                 _MAX_INITIAL_PERCENTAGE;
             uint256 passePeriod = Math.min(
-                (block.timestamp - _endDate - info.cliffDuration) /
-                    info.periodDuration,
-                info.countPeriodOfVesting
+                (block.timestamp - _endDate - info_.cliffDuration) /
+                    info_.periodDuration,
+                info_.countPeriodOfVesting
             );
             return
-                (((tokenAmount - initialUnlockAmount) * passePeriod) /
-                    info.countPeriodOfVesting) + initialUnlockAmount;
+                (((tokenAmount_ - initialUnlockAmount) * passePeriod) /
+                    info_.countPeriodOfVesting) + initialUnlockAmount;
         } else {
             return 0;
         }
     }
 
     /// @notice Compute unlocking amount of reward tokens to recipient for interval vesting
-    /// @dev Compute unlocking amount of reward tokens to recipient for interval vesting
-    /// @param intervals An array of structures that stores both the date and amount of unlocking for interval vesting
-    /// @param tokenAmount Available reward token amount
-    /// @param intervalIndex The index of interval that is already unlocked
+    /// @param intervals_ An array of structures that stores both the date and amount of unlocking for interval vesting
+    /// @param tokenAmount_ Available reward token amount
+    /// @param intervalIndex_ The index of interval that is already unlocked
     /// @return Unlocked amount of reward tokens
     function _calculateIntervalUnlock(
-        Interval[] memory intervals,
-        uint256 tokenAmount,
-        uint256 intervalIndex
+        Interval[] memory intervals_,
+        uint256 tokenAmount_,
+        uint256 intervalIndex_
     ) internal view virtual returns (uint256) {
         uint256 unlockPercentage = _initialPercentage;
-        if (intervalIndex > 0) {
+        if (intervalIndex_ > 0) {
             require(
-                intervals[intervalIndex].timestamp < block.timestamp,
+                intervals_[intervalIndex_].timestamp < block.timestamp,
                 "Incorrect interval index"
             );
-            unlockPercentage = intervals[intervalIndex].percentage;
+            unlockPercentage = intervals_[intervalIndex_].percentage;
         } else {
-            for (uint256 i = 0; i < intervals.length; i++) {
-                if (block.timestamp > intervals[i].timestamp) {
-                    unlockPercentage = intervals[i].percentage;
+            for (uint256 i = 0; i < intervals_.length; i++) {
+                if (block.timestamp > intervals_[i].timestamp) {
+                    unlockPercentage = intervals_[i].percentage;
                 } else {
                     break;
                 }
             }
         }
 
-        return (tokenAmount * unlockPercentage) / _MAX_INITIAL_PERCENTAGE;
+        return (tokenAmount_ * unlockPercentage) / _MAX_INITIAL_PERCENTAGE;
     }
 
     /// @notice Define if vesting is started

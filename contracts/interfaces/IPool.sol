@@ -2,12 +2,12 @@
 pragma solidity 0.8.9;
 
 /// @title IPool
+/// @author Arcane
 /// @notice There is an interface for Pool Smart Contract that provides the sale of tokens
 /// that will be unlocking until a certain date
 /// @dev There are provided all events and function prototypes for Pool SC
 interface IPool {
     /// @notice Types' enumeration of vesting
-    /// @dev Types' enumeration of vesting
     enum VestingType {
         SWAP,
         LINEAR_VESTING,
@@ -15,14 +15,12 @@ interface IPool {
     }
 
     /// @notice Structured data type for variables that store information about intervals of interval vesting
-    /// @dev Structured data type for variables that store information about intervals of interval vesting
     struct Interval {
         uint256 timestamp;
         uint256 percentage;
     }
 
     /// @notice Structured data type for variables that store information about vesting
-    /// @dev Structured data type for variables that store information about vesting
     struct VestingInfo {
         uint256 periodDuration;
         uint256 countPeriodOfVesting;
@@ -131,7 +129,6 @@ interface IPool {
     ) external;
 
     /// @notice Complete the vesting and transfer all funds and unsold rewards to vesting owner
-    /// @dev Complete the vesting and transfer all funds and unsold rewards to vesting owner
     function completeVesting() external;
 
     /// @notice Deposit some amount of deposit token
@@ -152,8 +149,8 @@ interface IPool {
 
     /// @notice Harvest rewards for the sender with interval index
     /// @dev Harvest rewards to the sender address with interval index
-    /// @param intervalIndex The index of interval that is already unlocked
-    function harvestInterval(uint256 intervalIndex) external;
+    /// @param intervalIndex_ The index of interval that is already unlocked
+    function harvestInterval(uint256 intervalIndex_) external;
 
     /// @notice Get an available deposit range
     /// @dev Get available amounts to deposit for addresses with general and specific allocations
@@ -218,7 +215,6 @@ interface IPool {
         returns (uint256 lockedBalance, uint256 unlockedBalance);
 
     /// @notice Convert some amount of deposit tokens to reward tokens amount
-    /// @dev Convert some amount of deposit tokens to reward tokens amount
     /// @param amount_ The amount of deposit tokens
     /// @return Amount of reward tokens
     function convertToToken(uint256 amount_) external view returns (uint256);
@@ -239,17 +235,14 @@ interface IPool {
         returns (uint256 startDate, uint256 endDate);
 
     /// @notice Get amounts of deposits that were paid from recipients
-    /// @dev Get amounts of deposits that were paid from recipients
     /// @return Deposit amount that was paid from recipient
     function deposited(address) external view returns (uint256);
 
     /// @notice Get amounts of reward tokens that were paid to recipients
-    /// @dev Get amounts of reward tokens that were paid to recipients
     /// @return Reward amount that was paid to recipient
     function rewardsPaid(address) external view returns (uint256);
 
     /// @notice Get amounts of specific deposit allocations that were allowed for some recipients
-    /// @dev Get amounts of specific deposit allocations that were allowed for some recipients
     /// @return Amount of specific allocation for recipient
     function specificAllocation(address) external view returns (uint256);
 }
