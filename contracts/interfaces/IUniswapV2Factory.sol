@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Unlicensed
-pragma solidity >=0.5.0;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.9;
 
 interface IUniswapV2Factory {
     event PairCreated(
@@ -8,6 +8,14 @@ interface IUniswapV2Factory {
         address pair,
         uint256
     );
+
+    function createPair(address tokenA, address tokenB)
+        external
+        returns (address pair);
+
+    function setFeeTo(address) external;
+
+    function setFeeToSetter(address) external;
 
     function feeTo() external view returns (address);
 
@@ -21,12 +29,4 @@ interface IUniswapV2Factory {
     function allPairs(uint256) external view returns (address pair);
 
     function allPairsLength() external view returns (uint256);
-
-    function createPair(address tokenA, address tokenB)
-        external
-        returns (address pair);
-
-    function setFeeTo(address) external;
-
-    function setFeeToSetter(address) external;
 }

@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Unlicensed
-pragma solidity >=0.5.0;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.9;
 
 interface IUniswapV2Pair {
     event Approval(
