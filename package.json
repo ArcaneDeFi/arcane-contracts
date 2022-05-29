@@ -17,7 +17,7 @@
         "dotenv": "^16.0.0",
         "solhint": "^3.3.7",
         "solidity-coverage": "^0.7.21",
-        "truffle": "^5.5.12",
+        "truffle": "^5.5.15",
         "truffle-contract-size": "^2.0.1",
         "truffle-plugin-verify": "^0.5.25",
         "web3": "^1.7.3"
