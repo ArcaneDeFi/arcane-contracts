@@ -1,0 +1,15 @@
+.idea
+.vscode
+.env
+.coverage_artifacts
+.coverage_contracts
+
+node_modules
+package-lock.json
+
+coverage
+coverage.json
+
+build/
+bin/
+temp/
